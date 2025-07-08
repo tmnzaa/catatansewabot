@@ -222,12 +222,19 @@
         const countdown = hitungCountdown(d.selesai);
         const id = d.id;
 
-        if (countdown !== "♾️" && countdown < 0) {
-          notifContainer.innerHTML += `
-            <div class="bg-red-100 border-l-4 border-red-600 p-3 rounded text-sm">
-              ⚠️ Masa sewa untuk <b>${d.namaGrup}</b> sudah habis! (${d.selesai})
-            </div>`;
-        }
+        if (countdown !== "♾️") {
+  if (countdown < 0) {
+    notifContainer.innerHTML += `
+      <div class="bg-red-100 border-l-4 border-red-600 p-3 rounded text-sm">
+        ⚠️ Masa sewa untuk <b>${d.namaGrup}</b> sudah habis! (${d.selesai})
+      </div>`;
+  } else if (countdown === 1) {
+    notifContainer.innerHTML += `
+      <div class="bg-orange-100 border-l-4 border-orange-500 p-3 rounded text-sm">
+        ⏰ Masa sewa untuk <b>${d.namaGrup}</b> akan *berakhir besok* (${d.selesai})
+      </div>`;
+  }
+}
 
         dataList.innerHTML += `
           <div class="note">
@@ -235,9 +242,18 @@
             ${d.nomorWa ? `<div class="note-meta">📱 WA: ${d.nomorWa}</div>` : ""}
             <div class="note-meta">📅 Selesai: ${d.selesai} (${countdown === "♾️" ? "Permanen" : countdown + " hari"})</div>
             <div class="note-actions">
-              <button onclick="editData('${id}', \`${d.namaGrup}\`, \`${d.nomorWa || ''}\`, \`${d.selesai}\`)" class="edit-btn">✏️ Edit</button>
-              <button onclick="showConfirm('${id}', '${d.namaGrup}')" class="hapus-btn">🗑️ Hapus</button>
-            </div>
+  <button onclick="editData('${id}', \`${d.namaGrup}\`, \`${d.nomorWa || ''}\`, \`${d.selesai}\`)" class="edit-btn">✏️ Edit</button>
+  <button onclick="showConfirm('${id}', '${d.namaGrup}')" class="hapus-btn">🗑️ Hapus</button>
+</div>
+<div class="mt-2 text-gray-500 text-xs italic">
+  ⏳ ${
+    countdown === "♾️"
+      ? "Masa aktif permanen"
+      : countdown > 0
+      ? `Tersisa ${countdown} hari lagi`
+      : "Masa aktif sudah habis"
+  }
+</div>
           </div>`;
       });
     }
