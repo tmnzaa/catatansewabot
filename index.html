@@ -2,7 +2,7 @@
 <html lang="id">
 <head>
   <meta charset="UTF-8" />
- <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Catatan Sewa Bot</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
@@ -43,20 +43,20 @@
   <div class="max-w-2xl mx-auto bg-white rounded-xl shadow p-4">
     <h1 class="text-xl sm:text-2xl font-bold text-center text-yellow-600 mb-4">📘 Catatan Sewa Bot Grup</h1>
 
-    <!-- Form Input -->
     <div class="grid sm:grid-cols-2 gap-3">
-      <input id="namaGrup" type="text" placeholder="Nama Grup" class="border p-2 rounded w-full"/>
-      <input id="nomorWa" type="text" placeholder="(Opsional) Nomor WA" class="border p-2 rounded w-full"/>
-      <select id="durasi" class="border p-2 rounded w-full col-span-2">
-        <option value="">Pilih Durasi Sewa</option>
-        <option value="7">7 Hari (3K)</option>
-        <option value="30">30 Hari (5K)</option>
-        <option value="60">60 Hari (7K)</option>
-        <option value="permanen">Permanen</option>
-        <option value="manual">Input Manual</option>
-      </select>
-      <input id="manualTanggal" type="date" class="border p-2 rounded w-full col-span-2 hidden"/>
-    </div>
+  <input id="namaGrup" type="text" placeholder="Nama Grup" class="border p-2 rounded w-full"/>
+  <input id="nomorWa" type="text" placeholder="(Opsional) Nomor WA" class="border p-2 rounded w-full"/>
+  <select id="durasi" class="border p-2 rounded w-full col-span-2">
+    <option value="">Pilih Durasi Sewa</option>
+    <option value="7">7 Hari (3K)</option>
+    <option value="30">30 Hari (5K)</option>
+    <option value="60">60 Hari (7K)</option>
+    <option value="permanen">Permanen</option>
+    <option value="manual">Input Manual</option>
+  </select>
+  <input id="manualTanggal" type="date" class="border p-2 rounded w-full col-span-2 hidden" placeholder="Tanggal Selesai"/>
+  <input id="manualMulai" type="date" class="border p-2 rounded w-full col-span-2 hidden" placeholder="Tanggal Mulai"/>
+</div>
     <button id="simpanBtn" class="mt-4 bg-yellow-500 hover:bg-yellow-600 text-white font-semibold w-full py-2 rounded">💾 Simpan Catatan</button>
 
     <!-- Notifikasi -->
@@ -100,6 +100,7 @@
     const nomorWa = document.getElementById("nomorWa");
     const durasi = document.getElementById("durasi");
     const manualTanggal = document.getElementById("manualTanggal");
+    const manualMulai = document.getElementById("manualMulai");
     const simpanBtn = document.getElementById("simpanBtn");
     const dataList = document.getElementById("dataList");
     const notifContainer = document.getElementById("notifContainer");
@@ -137,8 +138,10 @@
     };
 
     durasi.onchange = () => {
-      manualTanggal.classList.toggle("hidden", durasi.value !== "manual");
-    };
+  const isManual = durasi.value === "manual";
+  manualTanggal.classList.toggle("hidden", !isManual);
+  manualMulai.classList.toggle("hidden", !isManual);
+};
 
     simpanBtn.onclick = async () => {
       const nama = namaGrup.value.trim();
@@ -148,26 +151,34 @@
       if (!nama || !d) return showToast("⚠️ Nama grup dan durasi wajib diisi");
 
       let selesai;
-      if (d === "permanen") selesai = "permanen";
-      else if (d === "manual") {
-        if (!manualTanggal.value) return showToast("⚠️ Masukkan tanggal manual");
-        selesai = manualTanggal.value;
-      } else {
-        selesai = new Date(Date.now() + (parseInt(d) * 86400000)).toISOString().split("T")[0];
-      }
+let tanggalMulai = new Date();
+
+if (d === "permanen") {
+  selesai = "permanen";
+} else if (d === "manual") {
+  if (!manualTanggal.value || !manualMulai.value) return showToast("⚠️ Masukkan tanggal mulai dan selesai");
+  selesai = manualTanggal.value;
+  tanggalMulai = new Date(manualMulai.value);
+} else {
+  tanggalMulai = new Date();
+  selesai = new Date(tanggalMulai.getTime() + (parseInt(d) * 86400000)).toISOString().split("T")[0];
+}
+
 
       await addDoc(collection(db, "sewa"), {
-        namaGrup: nama,
-        nomorWa: noWa,
-        selesai: selesai,
-        dibuat: new Date()
-      });
+  namaGrup: nama,
+  nomorWa: noWa,
+  selesai: selesai,
+  dibuat: tanggalMulai
+});
 
-      namaGrup.value = "";
+           namaGrup.value = "";
       nomorWa.value = "";
       durasi.value = "";
       manualTanggal.value = "";
+      manualMulai.value = ""; // ⬅️ Reset tanggal mulai
       manualTanggal.classList.add("hidden");
+      manualMulai.classList.add("hidden"); // ⬅️ Sembunyikan input tanggal mulai
       namaGrup.focus();
       loadData();
     };
@@ -237,24 +248,28 @@
 }
 
         dataList.innerHTML += `
-          <div class="note">
-            <div class="note-title">${d.namaGrup}</div>
-            ${d.nomorWa ? `<div class="note-meta">📱 WA: ${d.nomorWa}</div>` : ""}
-            <div class="note-meta">📅 Selesai: ${d.selesai} (${countdown === "♾️" ? "Permanen" : countdown + " hari"})</div>
-            <div class="note-actions">
-  <button onclick="editData('${id}', \`${d.namaGrup}\`, \`${d.nomorWa || ''}\`, \`${d.selesai}\`)" class="edit-btn">✏️ Edit</button>
-  <button onclick="showConfirm('${id}', '${d.namaGrup}')" class="hapus-btn">🗑️ Hapus</button>
-</div>
-<div class="mt-2 text-gray-500 text-xs italic">
-  ⏳ ${
-    countdown === "♾️"
-      ? "Masa aktif permanen"
-      : countdown > 0
-      ? `Tersisa ${countdown} hari lagi`
-      : "Masa aktif sudah habis"
-  }
-</div>
-          </div>`;
+  <div class="note">
+    <div class="note-title">${d.namaGrup}</div>
+    ${d.nomorWa ? `<div class="note-meta">📱 WA: ${d.nomorWa}</div>` : ""}
+    <div class="note-meta">📅 Selesai: ${d.selesai} (${countdown === "♾️" ? "Permanen" : countdown + " hari"})</div>
+    <div class="note-meta">🗓️ Mulai sewa: ${new Date(d.dibuat.toDate ? d.dibuat.toDate() : d.dibuat).toLocaleDateString("id-ID", { day: 'numeric', month: 'long', year: 'numeric' })}</div>
+
+    <div class="note-actions">
+      <button onclick="editData('${id}', \`${d.namaGrup}\`, \`${d.nomorWa || ''}\`, \`${d.selesai}\`)" class="edit-btn">✏️ Edit</button>
+      <button onclick="showConfirm('${id}', '${d.namaGrup}')" class="hapus-btn">🗑️ Hapus</button>
+    </div>
+
+    <div class="mt-2 text-gray-500 text-xs italic">
+      ⏳ ${
+        countdown === "♾️"
+          ? "Masa aktif permanen"
+          : countdown > 0
+          ? `Tersisa ${countdown} hari lagi`
+          : "Masa aktif sudah habis"
+      }
+    </div>
+  </div>`;
+
       });
     }
 
