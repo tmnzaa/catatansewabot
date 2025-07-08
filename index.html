@@ -54,8 +54,15 @@
     <option value="permanen">Permanen</option>
     <option value="manual">Input Manual</option>
   </select>
-  <input id="manualTanggal" type="date" class="border p-2 rounded w-full col-span-2 hidden" placeholder="Tanggal Selesai"/>
-  <input id="manualMulai" type="date" class="border p-2 rounded w-full col-span-2 hidden" placeholder="Tanggal Mulai"/>
+  <div class="col-span-2 hidden" id="manualMulaiGroup">
+  <label for="manualMulai" class="text-sm text-gray-700 font-semibold mb-1 block">📅 Tanggal Mulai Sewa</label>
+  <input id="manualMulai" type="date" class="border p-2 rounded w-full" />
+</div>
+
+<div class="col-span-2 hidden" id="manualTanggalGroup">
+  <label for="manualTanggal" class="text-sm text-gray-700 font-semibold mb-1 block">⏳ Tanggal Berakhir Sewa</label>
+  <input id="manualTanggal" type="date" class="border p-2 rounded w-full" />
+</div>
 </div>
     <button id="simpanBtn" class="mt-4 bg-yellow-500 hover:bg-yellow-600 text-white font-semibold w-full py-2 rounded">💾 Simpan Catatan</button>
 
@@ -172,14 +179,14 @@ if (d === "permanen") {
   dibuat: tanggalMulai
 });
 
-           namaGrup.value = "";
-      nomorWa.value = "";
-      durasi.value = "";
-      manualTanggal.value = "";
-      manualMulai.value = ""; // ⬅️ Reset tanggal mulai
-      manualTanggal.classList.add("hidden");
-      manualMulai.classList.add("hidden"); // ⬅️ Sembunyikan input tanggal mulai
-      namaGrup.focus();
+     namaGrup.value = "";
+nomorWa.value = "";
+durasi.value = "";
+manualTanggal.value = "";
+manualMulai.value = "";
+document.getElementById("manualTanggalGroup").classList.add("hidden");
+document.getElementById("manualMulaiGroup").classList.add("hidden");
+namaGrup.focus();
       loadData();
     };
 
