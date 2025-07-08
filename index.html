@@ -146,10 +146,9 @@
 
     durasi.onchange = () => {
   const isManual = durasi.value === "manual";
-  manualTanggal.classList.toggle("hidden", !isManual);
-  manualMulai.classList.toggle("hidden", !isManual);
+  document.getElementById("manualTanggalGroup").classList.toggle("hidden", !isManual);
+  document.getElementById("manualMulaiGroup").classList.toggle("hidden", !isManual);
 };
-
     simpanBtn.onclick = async () => {
       const nama = namaGrup.value.trim();
       const noWa = nomorWa.value.trim();
