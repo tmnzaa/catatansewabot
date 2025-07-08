@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Catatan Sewa Bot</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .note {
+      background: #fffbe6;
+      border-left: 6px solid #f59e0b;
+      padding: 1rem;
+      margin-bottom: 1rem;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      border-radius: 0.5rem;
+      font-family: 'Courier New', monospace;
+    }
+    .note-title {
+      font-weight: bold;
+      color: #d97706;
+      font-size: 1.1rem;
+    }
+    .note-meta {
+      font-size: 0.85rem;
+      color: #6b7280;
+    }
+    .note-actions {
+      margin-top: 0.5rem;
+    }
+    .note-actions button {
+      font-size: 0.8rem;
+      margin-right: 0.5rem;
+      color: white;
+      padding: 4px 8px;
+      border-radius: 4px;
+    }
+    .edit-btn { background-color: #3b82f6; }
+    .hapus-btn { background-color: #ef4444; }
+  </style>
+</head>
+<body class="bg-yellow-50 p-4 min-h-screen">
+
+  <div class="max-w-2xl mx-auto bg-white rounded-xl shadow p-4">
+    <h1 class="text-xl sm:text-2xl font-bold text-center text-yellow-600 mb-4">📘 Catatan Sewa Bot Grup</h1>
+
+    <!-- Form Input -->
+    <div class="grid sm:grid-cols-2 gap-3">
+      <input id="namaGrup" type="text" placeholder="Nama Grup" class="border p-2 rounded w-full"/>
+      <input id="nomorWa" type="text" placeholder="(Opsional) Nomor WA" class="border p-2 rounded w-full"/>
+      <select id="durasi" class="border p-2 rounded w-full col-span-2">
+        <option value="">Pilih Durasi Sewa</option>
+        <option value="7">7 Hari (3K)</option>
+        <option value="30">30 Hari (5K)</option>
+        <option value="60">60 Hari (7K)</option>
+        <option value="permanen">Permanen</option>
+        <option value="manual">Input Manual</option>
+      </select>
+      <input id="manualTanggal" type="date" class="border p-2 rounded w-full col-span-2 hidden"/>
+    </div>
+    <button id="simpanBtn" class="mt-4 bg-yellow-500 hover:bg-yellow-600 text-white font-semibold w-full py-2 rounded">💾 Simpan Catatan</button>
+
+    <!-- Notifikasi -->
+    <div id="notifToast" class="fixed top-4 right-4 z-50 hidden px-4 py-2 bg-red-500 text-white text-sm rounded shadow"></div>
+    <div id="notifContainer" class="mt-4 space-y-2 text-sm"></div>
+
+    <!-- List Data -->
+    <h2 class="text-lg font-bold mt-6 mb-2 text-yellow-700">📝 Daftar Catatan</h2>
+    <div id="dataList" class="space-y-4 text-sm"></div>
+  </div>
+
+  <!-- Konfirmasi Modal -->
+  <div id="confirmModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-40">
+    <div class="bg-white rounded-lg p-6 max-w-sm text-center">
+      <p class="text-gray-800 font-semibold mb-4" id="confirmText">Yakin ingin menghapus data?</p>
+      <div class="flex justify-center gap-4">
+        <button id="confirmYes" class="bg-red-500 text-white px-4 py-1 rounded">Ya</button>
+        <button id="confirmNo" class="bg-gray-300 px-4 py-1 rounded">Batal</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Firebase -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
+    import { getFirestore, collection, addDoc, getDocs, deleteDoc, updateDoc, doc } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyAU9QmMqLYkgrPLtx0xgGTt665G1aztBqw",
+      authDomain: "sewa-bot-grup.firebaseapp.com",
+      projectId: "sewa-bot-grup",
+      storageBucket: "sewa-bot-grup.firebasestorage.app",
+      messagingSenderId: "629294289955",
+      appId: "1:629294289955:web:ca4bae2c94944247648d96"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    const namaGrup = document.getElementById("namaGrup");
+    const nomorWa = document.getElementById("nomorWa");
+    const durasi = document.getElementById("durasi");
+    const manualTanggal = document.getElementById("manualTanggal");
+    const simpanBtn = document.getElementById("simpanBtn");
+    const dataList = document.getElementById("dataList");
+    const notifContainer = document.getElementById("notifContainer");
+    const notifToast = document.getElementById("notifToast");
+    const confirmModal = document.getElementById("confirmModal");
+    const confirmText = document.getElementById("confirmText");
+    const confirmYes = document.getElementById("confirmYes");
+    const confirmNo = document.getElementById("confirmNo");
+
+    let deleteTargetId = null;
+
+    function showToast(msg) {
+      notifToast.innerText = msg;
+      notifToast.classList.remove("hidden");
+      setTimeout(() => notifToast.classList.add("hidden"), 2500);
+    }
+
+    function showConfirm(id, nama) {
+      deleteTargetId = id;
+      confirmText.innerText = `Yakin ingin menghapus catatan untuk "${nama}"?`;
+      confirmModal.classList.remove("hidden");
+    }
+
+    confirmYes.onclick = async () => {
+      if (deleteTargetId) {
+        await deleteDoc(doc(db, "sewa", deleteTargetId));
+        loadData();
+        deleteTargetId = null;
+        confirmModal.classList.add("hidden");
+      }
+    };
+    confirmNo.onclick = () => {
+      deleteTargetId = null;
+      confirmModal.classList.add("hidden");
+    };
+
+    durasi.onchange = () => {
+      manualTanggal.classList.toggle("hidden", durasi.value !== "manual");
+    };
+
+    simpanBtn.onclick = async () => {
+      const nama = namaGrup.value.trim();
+      const noWa = nomorWa.value.trim();
+      const d = durasi.value;
+
+      if (!nama || !d) return showToast("⚠️ Nama grup dan durasi wajib diisi");
+
+      let selesai;
+      if (d === "permanen") selesai = "permanen";
+      else if (d === "manual") {
+        if (!manualTanggal.value) return showToast("⚠️ Masukkan tanggal manual");
+        selesai = manualTanggal.value;
+      } else {
+        selesai = new Date(Date.now() + (parseInt(d) * 86400000)).toISOString().split("T")[0];
+      }
+
+      await addDoc(collection(db, "sewa"), {
+        namaGrup: nama,
+        nomorWa: noWa,
+        selesai: selesai,
+        dibuat: new Date()
+      });
+
+      namaGrup.value = "";
+      nomorWa.value = "";
+      durasi.value = "";
+      manualTanggal.value = "";
+      manualTanggal.classList.add("hidden");
+      namaGrup.focus();
+      loadData();
+    };
+
+    async function editData(id, oldNama, oldNoWa, oldTgl) {
+      const nama = prompt("Edit Nama Grup:", oldNama);
+      if (nama === null) return;
+      const noWa = prompt("Edit Nomor WA (opsional):", oldNoWa);
+      if (noWa === null) return;
+      const tgl = prompt("Edit Tanggal (YYYY-MM-DD / 'permanen'):", oldTgl);
+      if (!tgl) return;
+      await updateDoc(doc(db, "sewa", id), {
+        namaGrup: nama,
+        nomorWa: noWa,
+        selesai: tgl
+      });
+      loadData();
+    }
+
+    function hitungCountdown(tanggal) {
+      if (tanggal === "permanen") return "♾️";
+      const now = new Date();
+      const target = new Date(tanggal);
+      const selisih = target - now;
+      return Math.floor(selisih / (1000 * 60 * 60 * 24));
+    }
+
+    async function loadData() {
+      dataList.innerHTML = "";
+      notifContainer.innerHTML = "";
+
+      const snapshot = await getDocs(collection(db, "sewa"));
+      let items = [];
+      snapshot.forEach(docu => {
+        items.push({ ...docu.data(), id: docu.id });
+      });
+
+      items.sort((a, b) => {
+        if (a.selesai === "permanen") return 1;
+        if (b.selesai === "permanen") return -1;
+        return new Date(a.selesai) - new Date(b.selesai);
+      });
+
+      if (items.length === 0) {
+        notifContainer.innerHTML = `<div class="bg-yellow-100 border-l-4 border-yellow-600 p-3 rounded text-sm text-center">
+          📭 Belum ada data sewa yang tersimpan.
+        </div>`;
+        return;
+      }
+
+      items.forEach(d => {
+        const countdown = hitungCountdown(d.selesai);
+        const id = d.id;
+
+        if (countdown !== "♾️" && countdown < 0) {
+          notifContainer.innerHTML += `
+            <div class="bg-red-100 border-l-4 border-red-600 p-3 rounded text-sm">
+              ⚠️ Masa sewa untuk <b>${d.namaGrup}</b> sudah habis! (${d.selesai})
+            </div>`;
+        }
+
+        dataList.innerHTML += `
+          <div class="note">
+            <div class="note-title">${d.namaGrup}</div>
+            ${d.nomorWa ? `<div class="note-meta">📱 WA: ${d.nomorWa}</div>` : ""}
+            <div class="note-meta">📅 Selesai: ${d.selesai} (${countdown === "♾️" ? "Permanen" : countdown + " hari"})</div>
+            <div class="note-actions">
+              <button onclick="editData('${id}', \`${d.namaGrup}\`, \`${d.nomorWa || ''}\`, \`${d.selesai}\`)" class="edit-btn">✏️ Edit</button>
+              <button onclick="showConfirm('${id}', '${d.namaGrup}')" class="hapus-btn">🗑️ Hapus</button>
+            </div>
+          </div>`;
+      });
+    }
+
+    window.editData = editData;
+    window.showConfirm = showConfirm;
+    loadData();
+  </script>
+</body>
+</html>
